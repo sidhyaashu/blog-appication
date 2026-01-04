@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import TiptapEditor from '@/components/editor/tiptap-editor';
+import { ImageUpload } from '@/components/ui/image-upload';
 import { API_URL } from '@/lib/api';
 
 interface Category {
@@ -59,17 +60,8 @@ export default function NewPostPage() {
             return;
         }
 
-        // Validate image URL domain (must match Next.js config whitelist)
-        const allowedDomains = ['images.pexels.com', 'images.unsplash.com'];
-        try {
-            const url = new URL(imageUrl);
-            if (!allowedDomains.includes(url.hostname)) {
-                toast.error('Only Pexels and Unsplash images are currently supported');
-                setLoading(false);
-                return;
-            }
-        } catch (error) {
-            toast.error('Invalid image URL');
+        if (!imageUrl) {
+            toast.error('Please upload a cover image');
             setLoading(false);
             return;
         }
@@ -125,8 +117,23 @@ export default function NewPostPage() {
                 </div>
 
                 <div className="space-y-2">
-                    <Label htmlFor="image">Hero Image URL</Label>
-                    <Input id="image" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} required />
+                    <Label htmlFor="excerpt">Excerpt</Label>
+                    <textarea
+                        id="excerpt"
+                        className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        value={excerpt}
+                        onChange={(e) => setExcerpt(e.target.value)}
+                        required
+                    />
+                </div>
+
+                <div className="space-y-2">
+                    <Label>Cover Image</Label>
+                    <ImageUpload
+                        value={imageUrl}
+                        onChange={(url) => setImageUrl(url)}
+                        onRemove={() => setImageUrl('')}
+                    />
                 </div>
 
                 <div className="space-y-2">

@@ -55,8 +55,14 @@ export function ClapButton({ postId, className }: ClapButtonProps) {
             return;
         }
 
-        setIsClapping(true);
+        // OPTIMISTIC UPDATE: Update UI immediately
+        const previousUserClaps = userClaps;
+        const previousTotalClaps = totalClaps;
+
+        setUserClaps(prev => prev + 1);
+        setTotalClaps(prev => prev + 1);
         setAnimate(true);
+        setIsClapping(true);
 
         try {
             const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/posts/${postId}/clap`, {
@@ -70,13 +76,20 @@ export function ClapButton({ postId, className }: ClapButtonProps) {
 
             if (res.ok) {
                 const data = await res.json();
+                // Update with actual server values
                 setUserClaps(data.userClaps);
                 setTotalClaps(data.totalClaps);
             } else {
-                toast.error('Failed to clap');
+                // ROLLBACK: Revert to previous values on error
+                setUserClaps(previousUserClaps);
+                setTotalClaps(previousTotalClaps);
+                toast.error('Failed to clap. Please try again.');
             }
         } catch (error) {
-            toast.error('Failed to clap');
+            // ROLLBACK: Revert to previous values on error
+            setUserClaps(previousUserClaps);
+            setTotalClaps(previousTotalClaps);
+            toast.error('Network error. Please try again.');
         } finally {
             setIsClapping(false);
             setTimeout(() => setAnimate(false), 300);

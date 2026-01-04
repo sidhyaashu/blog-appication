@@ -37,6 +37,7 @@ export default function BlogsPage() {
     const [initialLoad, setInitialLoad] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [searchDebounce, setSearchDebounce] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
     const observerTarget = useRef<HTMLDivElement>(null);
 
@@ -54,12 +55,12 @@ export default function BlogsPage() {
         return () => clearTimeout(timer);
     }, [searchQuery]);
 
-    // Reset when search changes
+    // Reset when search or category changes
     useEffect(() => {
         setPosts([]);
         setPage(1);
         setHasMore(true);
-    }, [searchDebounce]);
+    }, [searchDebounce, selectedCategory]);
 
     // Load posts function
     const loadMorePosts = useCallback(async () => {
@@ -70,7 +71,8 @@ export default function BlogsPage() {
             const params = new URLSearchParams({
                 page: page.toString(),
                 limit: '10',
-                ...(searchDebounce && { search: searchDebounce })
+                ...(searchDebounce && { search: searchDebounce }),
+                ...(selectedCategory && { category: selectedCategory })
             });
 
             const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/posts?${params}`);
@@ -105,12 +107,13 @@ export default function BlogsPage() {
             setLoading(false);
             setInitialLoad(false);
         }
-    }, [page, searchDebounce, loading, hasMore]);
+    }, [page, searchDebounce, selectedCategory, loading, hasMore]);
 
-    // Trigger load on page or search change
+    // Trigger load on page, search, or category change
     useEffect(() => {
         loadMorePosts();
-    }, [page, searchDebounce]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [page, searchDebounce, selectedCategory]);
 
     // Intersection Observer for infinite scroll
     useEffect(() => {
@@ -129,6 +132,11 @@ export default function BlogsPage() {
 
         return () => observer.disconnect();
     }, [hasMore, loading, initialLoad]);
+
+    const handleCategoryClick = (categoryId: string | null) => {
+        setSelectedCategory(categoryId);
+        setSearchQuery(''); // Clear search when filtering by category
+    };
 
     return (
         <div className="min-h-screen bg-background">
@@ -159,10 +167,26 @@ export default function BlogsPage() {
                         <div className="mt-8">
                             <h3 className="px-4 mb-3 text-sm font-semibold text-gray-500 uppercase tracking-wider">Topics</h3>
                             <div className="space-y-1">
+                                <button
+                                    onClick={() => handleCategoryClick(null)}
+                                    className={`w-full text-left px-4 py-2 text-sm rounded-lg transition ${!selectedCategory
+                                        ? 'bg-blue-600 text-white font-medium'
+                                        : 'hover:bg-gray-100'
+                                        }`}
+                                >
+                                    All Topics
+                                </button>
                                 {categories.slice(0, 6).map((cat) => (
-                                    <Link key={cat.id} href={`/category/${cat.slug}`} className="block px-4 py-2 text-sm rounded-lg hover:bg-gray-100 transition">
+                                    <button
+                                        key={cat._id}
+                                        onClick={() => handleCategoryClick(cat._id)}
+                                        className={`w-full text-left px-4 py-2 text-sm rounded-lg transition ${selectedCategory === cat._id
+                                            ? 'bg-blue-600 text-white font-medium'
+                                            : 'hover:bg-gray-100'
+                                            }`}
+                                    >
                                         {cat.name}
-                                    </Link>
+                                    </button>
                                 ))}
                             </div>
                         </div>
@@ -186,13 +210,13 @@ export default function BlogsPage() {
                             </div>
                         </div>
 
-                        <Tabs defaultValue="for-you" className="w-full">
+                        <Tabs defaultValue="latest" className="w-full">
                             <TabsList className="mb-8">
-                                <TabsTrigger value="for-you">For you</TabsTrigger>
+                                <TabsTrigger value="latest">Latest</TabsTrigger>
                                 <TabsTrigger value="featured">Featured</TabsTrigger>
                             </TabsList>
 
-                            <TabsContent value="for-you" className="space-y-6">
+                            <TabsContent value="latest" className="space-y-6">
                                 {posts.map((post) => (
                                     <article key={post._id} className="border-b border-gray-200 pb-6 last:border-0">
                                         <Link href={`/blog/${post.slug}`} className="group">

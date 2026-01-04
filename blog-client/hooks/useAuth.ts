@@ -1,6 +1,6 @@
 import { useCallback, useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from './redux';
-import { login, signup, googleLogin, logout, clearError } from '@/lib/slices/authSlice';
+import { login, signup, googleLogin, logout, clearError, updateUser } from '@/lib/slices/authSlice';
 import { UserLogin, UserRegister } from '@/lib/post';
 
 export function useAuth() {
@@ -39,6 +39,10 @@ export function useAuth() {
         dispatch(clearError());
     }, [dispatch]);
 
+    const handleUpdateUser = useCallback((userData: Partial<import('@/lib/post').User>) => {
+        dispatch(updateUser(userData));
+    }, [dispatch]);
+
     return {
         user,
         token,
@@ -51,5 +55,6 @@ export function useAuth() {
         googleLogin: handleGoogleLogin,
         logout: handleLogout,
         clearError: handleClearError,
+        updateUser: handleUpdateUser,
     };
 }

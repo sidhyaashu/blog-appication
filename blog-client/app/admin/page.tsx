@@ -1,9 +1,52 @@
+"use client"
+
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, Users, Eye } from 'lucide-react';
+import { FileText, Users, Eye, Loader2 } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { toast } from 'sonner';
+
+interface AdminStats {
+    totalPosts: number;
+    totalViews: number;
+    totalUsers: number;
+}
 
 export default function AdminDashboard() {
+    const { token } = useAuth();
+    const [stats, setStats] = useState<AdminStats | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchStats = async () => {
+            try {
+                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/stats`, {
+                    headers: {
+                        Authorization: `Bearer ${token}`
+                    }
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    setStats(data);
+                } else {
+                    toast.error('Failed to load stats');
+                }
+            } catch (error) {
+                console.error('Error fetching admin stats:', error);
+                toast.error('Error loading dashboard');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        if (token) {
+            fetchStats();
+        }
+    }, [token]);
+
     return (
         <div className="space-y-8">
             <div className="flex justify-between items-center">
@@ -26,8 +69,14 @@ export default function AdminDashboard() {
                         <FileText className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">12</div>
-                        <p className="text-xs text-muted-foreground">+2 from last month</p>
+                        {loading ? (
+                            <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                        ) : (
+                            <>
+                                <div className="text-2xl font-bold">{stats?.totalPosts || 0}</div>
+                                <p className="text-xs text-muted-foreground">Published articles</p>
+                            </>
+                        )}
                     </CardContent>
                 </Card>
                 <Card>
@@ -36,23 +85,33 @@ export default function AdminDashboard() {
                         <Eye className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">45.2k</div>
-                        <p className="text-xs text-muted-foreground">+12% from last month</p>
+                        {loading ? (
+                            <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                        ) : (
+                            <>
+                                <div className="text-2xl font-bold">{stats?.totalViews || 0}</div>
+                                <p className="text-xs text-muted-foreground">All time views</p>
+                            </>
+                        )}
                     </CardContent>
                 </Card>
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Subscribers</CardTitle>
+                        <CardTitle className="text-sm font-medium">Users</CardTitle>
                         <Users className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">573</div>
-                        <p className="text-xs text-muted-foreground">+201 since last week</p>
+                        {loading ? (
+                            <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                        ) : (
+                            <>
+                                <div className="text-2xl font-bold">{stats?.totalUsers || 0}</div>
+                                <p className="text-xs text-muted-foreground">Registered readers</p>
+                            </>
+                        )}
                     </CardContent>
                 </Card>
             </div>
-
-            {/* Recent Posts Table could go here */}
         </div>
     );
 }

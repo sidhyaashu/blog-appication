@@ -82,14 +82,18 @@ export default function ProfilePage() {
                             <h1 className="text-4xl font-bold mb-2">{user.name}</h1>
                             <p className="text-gray-600 mb-4">{user.email}</p>
                             <div className="flex gap-3">
-                                <Button variant="outline" size="sm">
-                                    <Edit className="w-4 h-4 mr-2" />
-                                    Edit Profile
-                                </Button>
-                                <Button variant="outline" size="sm">
-                                    <Settings className="w-4 h-4 mr-2" />
-                                    Settings
-                                </Button>
+                                <Link href="/settings/profile">
+                                    <Button variant="outline" size="sm">
+                                        <Edit className="w-4 h-4 mr-2" />
+                                        Edit Profile
+                                    </Button>
+                                </Link>
+                                <Link href="/settings">
+                                    <Button variant="outline" size="sm">
+                                        <Settings className="w-4 h-4 mr-2" />
+                                        Settings
+                                    </Button>
+                                </Link>
                             </div>
                         </div>
                     </div>

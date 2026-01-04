@@ -6,6 +6,8 @@ export interface IUser extends Document {
     password?: string;
     role: 'admin' | 'user';
     googleId?: string;
+    avatar?: string;
+    bio?: string;
     created_at: Date;
 }
 
@@ -15,8 +17,8 @@ const UserSchema: Schema = new Schema({
     password: { type: String }, // Optional for Google Auth users
     role: { type: String, enum: ['admin', 'user'], default: 'user' },
     googleId: { type: String },
-    avatar_url: { type: String },
-    bio: { type: String },
+    avatar: { type: String, default: '' },
+    bio: { type: String, maxlength: 500, default: '' },
     created_at: { type: Date, default: Date.now }
 });
 

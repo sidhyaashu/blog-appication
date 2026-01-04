@@ -1,8 +1,13 @@
 import express from 'express';
-import { registerUser, loginUser, googleAuth, validateAuthInput } from '../controllers/authController.js';
+import { registerUser, loginUser, googleAuth, validateAuthInput, updateProfile } from '../controllers/authController.js';
 import { body, validationResult } from 'express-validator';
+import { authLimiter } from '../middleware/rateLimiter.js';
+import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
+
+// Apply strict rate limiting to all auth routes
+router.use(authLimiter);
 
 router.post(
     '/signup',
@@ -26,5 +31,6 @@ router.post(
 );
 
 router.post('/google', googleAuth);
+router.put('/profile', protect, updateProfile);
 
 export default router;

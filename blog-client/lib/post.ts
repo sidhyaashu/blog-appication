@@ -44,6 +44,7 @@ export type User = {
   role: string;
   token: string;
   avatar?: string;
+  bio?: string;
 };
 
 export type AuthResponse = {
@@ -52,6 +53,8 @@ export type AuthResponse = {
   email: string;
   role: string;
   token: string;
+  avatar?: string;
+  bio?: string;
 };
 
 export type UserLogin = {
@@ -69,10 +72,4 @@ export type GoogleAuth = {
   token: string;
 };
 
-export interface Category {
-  id: string;
-  _id?: string;
-  name: string;
-  slug: string;
-  created_at: Date;
-}
+

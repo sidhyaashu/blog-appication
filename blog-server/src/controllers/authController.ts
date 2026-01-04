@@ -1,7 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import User from '../models/User.js';
-import * as jwt from 'jsonwebtoken';
-import * as bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
 import { OAuth2Client } from 'google-auth-library';
 import { body, validationResult } from 'express-validator';
 
@@ -130,5 +130,39 @@ export const googleAuth = async (req: Request, res: Response) => {
         });
     } catch (error) {
         res.status(400).json({ message: 'Google Auth Failed' });
+    }
+};
+
+export const updateProfile = async (req: Request, res: Response) => {
+    try {
+        const user = await User.findById((req as any).user._id);
+
+        if (user) {
+            user.name = req.body.name || user.name;
+            user.email = req.body.email || user.email;
+            user.bio = req.body.bio || user.bio;
+            user.avatar = req.body.avatar || user.avatar;
+
+            if (req.body.password) {
+                const salt = await bcrypt.genSalt(10);
+                user.password = await bcrypt.hash(req.body.password, salt);
+            }
+
+            const updatedUser = await user.save();
+
+            res.json({
+                _id: updatedUser._id,
+                name: updatedUser.name,
+                email: updatedUser.email,
+                role: updatedUser.role,
+                bio: updatedUser.bio,
+                avatar: updatedUser.avatar,
+                token: generateToken((updatedUser._id as any).toString(), updatedUser.role),
+            });
+        } else {
+            res.status(404).json({ message: 'User not found' });
+        }
+    } catch (error) {
+        res.status(500).json({ message: 'Server error' });
     }
 };

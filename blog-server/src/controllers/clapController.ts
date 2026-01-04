@@ -45,8 +45,48 @@ export const clapPost = async (req: Request, res: Response) => {
         });
 
         // Get updated totals from denormalized field
-        const post = await Post.findById(postId).select('total_claps');
+        const post = await Post.findById(postId).select('total_claps author_id');
         const totalClaps = post?.total_claps || 0;
+
+        // Create Notification (only if it's a new clap session or significant milestone, but primarily just on interaction)
+        // Since toggleClap can be called multiple times rapidly, we might want to debounce or check if a notif exists recently.
+        // For simplicity: Notify if user is new clapper or hasn't clapped recently? 
+        // Actually, cleaner approach: Just notify. But claps update existing doc.
+        // Logic: If result was upserted (newly created), send notification.
+        // Check `result` object from findOneAndUpdate with { rawResult: true } if enabled, or just check created_at vs updated_at?
+        // Simpler: Just send notification, but maybe limit frequency?
+        // Let's just trigger it. It's a "User clapped for your post".
+
+        if (post && post.author_id.toString() !== userId.toString()) {
+            try {
+                const Notification = (await import('../models/Notification.js')).default;
+
+                // Optional: Check if a 'clap' notification from this user for this post already exists and is unread?
+                //To avoid spam, we can just update the timestamp of existing unread notification
+
+                const existingNotif = await Notification.findOne({
+                    recipient_id: post.author_id,
+                    sender_id: userId,
+                    type: 'clap',
+                    post_id: postId,
+                    read: false
+                });
+
+                if (existingNotif) {
+                    existingNotif.created_at = new Date();
+                    await existingNotif.save();
+                } else {
+                    await Notification.create({
+                        recipient_id: post.author_id,
+                        sender_id: userId,
+                        type: 'clap',
+                        post_id: postId
+                    });
+                }
+            } catch (err) {
+                console.error('Clap notification error', err);
+            }
+        }
 
         res.status(200).json({
             userClaps: result.count,

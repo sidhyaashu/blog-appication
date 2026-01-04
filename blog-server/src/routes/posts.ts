@@ -1,6 +1,7 @@
 import express from 'express';
-import { getPosts, getPostBySlug, getPostById, createPost, getFeaturedPosts, deletePost, updatePost, getComments, addComment } from '../controllers/postController.js';
+import { getPosts, getPostBySlug, getPostById, createPost, getFeaturedPosts, deletePost, updatePost, getComments, addComment, getRelatedPosts } from '../controllers/postController.js';
 import { protect, admin } from '../middleware/authMiddleware.js';
+import { cacheMiddleware } from '../middleware/cacheMiddleware.js';
 import { body, param, validationResult } from 'express-validator';
 
 const router = express.Router();
@@ -14,8 +15,8 @@ const validatePostInput = (req: express.Request, res: express.Response, next: ex
     next();
 };
 
-router.get('/', getPosts);
-router.get('/featured', getFeaturedPosts);
+router.get('/', cacheMiddleware(300), getPosts); // Cache for 5 minutes
+router.get('/featured', cacheMiddleware(300), getFeaturedPosts);
 router.get('/id/:id', param('id').isMongoId(), validatePostInput, getPostById);
 
 // Comments routes - must come before /:slug  
@@ -24,7 +25,8 @@ router.get('/:id/comments', param('id').isMongoId(), validatePostInput, getComme
 router.post('/:id/comments', protect, param('id').isMongoId(), validatePostInput, addComment);
 
 // Slug route must be last among GET routes
-router.get('/slug/:slug', getPostBySlug);
+router.get('/slug/:slug', cacheMiddleware(300), getPostBySlug);
+router.get('/slug/:slug/related', cacheMiddleware(300), getRelatedPosts);
 
 router.post(
     '/',

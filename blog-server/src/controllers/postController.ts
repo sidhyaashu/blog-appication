@@ -3,6 +3,7 @@ import Post from '../models/Post.js';
 import Category from '../models/Category.js';
 import Comment from '../models/Comment.js';
 import sanitizeHtml from 'sanitize-html';
+import { clearCache } from '../middleware/cacheMiddleware.js';
 
 export const getPosts = async (req: Request, res: Response) => {
     try {
@@ -134,6 +135,9 @@ export const deletePost = async (req: Request, res: Response) => {
         // Optional: Check if user is author or admin (Assuming admin for now based on route protection)
         await post.deleteOne();
 
+        // Invalidate cache
+        await clearCache('/api/posts');
+
         res.json({ message: 'Post removed' });
     } catch (error) {
         res.status(500).json({ message: 'Server Error', error });
@@ -175,6 +179,10 @@ export const updatePost = async (req: Request, res: Response) => {
         post.image = image || post.image;
 
         const updatedPost = await post.save();
+
+        // Invalidate cache
+        await clearCache('/api/posts');
+
         res.json(updatedPost);
     } catch (error) {
         res.status(500).json({ message: 'Server Error', error });
@@ -199,7 +207,7 @@ export const addComment = async (req: Request, res: Response) => {
             return res.status(401).json({ message: 'Not authorized' });
         }
 
-        const { content } = req.body;
+        const { content, parent_id } = req.body;
         if (!content) {
             return res.status(400).json({ message: 'Content is required' });
         }
@@ -207,13 +215,75 @@ export const addComment = async (req: Request, res: Response) => {
         const comment = await Comment.create({
             post_id: req.params.id,
             user_id: user._id,
+            parent_id: parent_id || null,
             content
         });
 
         const populatedComment = await Comment.findById(comment._id).populate('user_id', 'name');
 
+        // Create Notification
+        try {
+            const Notification = (await import('../models/Notification.js')).default;
+            const Post = (await import('../models/Post.js')).default;
+
+            const post = await Post.findById(req.params.id);
+
+            if (post) {
+                // Determine recipient
+                let recipientId = post.author_id; // Default to post author
+                let type = 'comment';
+
+                if (parent_id) {
+                    const parentComment = await Comment.findById(parent_id);
+                    if (parentComment) {
+                        recipientId = parentComment.user_id;
+                        type = 'reply';
+                    }
+                }
+
+                // Don't notify if user is replying to themselves
+                if (recipientId.toString() !== user._id.toString()) {
+                    await Notification.create({
+                        recipient_id: recipientId,
+                        sender_id: user._id,
+                        type,
+                        post_id: post._id,
+                        comment_id: comment._id
+                    });
+                }
+            }
+        } catch (notifError) {
+            console.error('Notification creation failed', notifError);
+            // Don't fail the request if notification fails
+        }
+
         res.status(201).json(populatedComment);
     } catch (error) {
         res.status(500).json({ message: 'Server Error', error });
+    }
+};
+
+export const getRelatedPosts = async (req: Request, res: Response) => {
+    try {
+        const { slug } = req.params;
+        const currentPost = await Post.findOne({ slug });
+
+        if (!currentPost) {
+            return res.status(404).json({ message: 'Post not found' });
+        }
+
+        const relatedPosts = await Post.find({
+            category_id: currentPost.category_id,
+            slug: { $ne: slug }, // Exclude current post
+            status: 'published'
+        })
+            .populate('category_id', 'name slug')
+            .populate('author_id', 'name avatar_url')
+            .limit(3)
+            .sort({ published_at: -1 });
+
+        res.json(relatedPosts);
+    } catch (error) {
+        res.status(500).json({ message: 'Server Error' });
     }
 };
