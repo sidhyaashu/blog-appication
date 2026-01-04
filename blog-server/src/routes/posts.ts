@@ -1,7 +1,7 @@
 import express from 'express';
 import { getPosts, getPostBySlug, getPostById, createPost, getFeaturedPosts, deletePost, updatePost, getComments, addComment } from '../controllers/postController.js';
 import { protect, admin } from '../middleware/authMiddleware.js';
-import { body, validationResult } from 'express-validator';
+import { body, param, validationResult } from 'express-validator';
 
 const router = express.Router();
 
@@ -16,11 +16,12 @@ const validatePostInput = (req: express.Request, res: express.Response, next: ex
 
 router.get('/', getPosts);
 router.get('/featured', getFeaturedPosts);
-router.get('/id/:id', getPostById);
+router.get('/id/:id', param('id').isMongoId(), validatePostInput, getPostById);
 
-// Comments routes - must come before /:slug
-router.get('/:id/comments', getComments);
-router.post('/:id/comments', protect, addComment);
+// Comments routes - must come before /:slug  
+// Validate :id parameter is a valid MongoDB ObjectId
+router.get('/:id/comments', param('id').isMongoId(), validatePostInput, getComments);
+router.post('/:id/comments', protect, param('id').isMongoId(), validatePostInput, addComment);
 
 // Slug route must be last among GET routes
 router.get('/slug/:slug', getPostBySlug);
@@ -45,6 +46,7 @@ router.put(
     '/:id',
     protect,
     admin,
+    param('id').isMongoId(),
     [
         body('title').optional().notEmpty().withMessage('Title cannot be empty'),
         body('content').optional().notEmpty().withMessage('Content cannot be empty'),
@@ -57,6 +59,6 @@ router.put(
     updatePost
 );
 
-router.delete('/:id', protect, admin, deletePost);
+router.delete('/:id', protect, admin, param('id').isMongoId(), validatePostInput, deletePost);
 
 export default router;

@@ -1,6 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import User from '../models/User.js';
 
 export const protect = async (req: Request, res: Response, next: NextFunction) => {
     let token;
@@ -15,15 +14,12 @@ export const protect = async (req: Request, res: Response, next: NextFunction) =
 
             const decoded = jwt.verify(token, process.env.JWT_SECRET) as any;
 
-            // Fetch user from database
-            const user = await User.findById(decoded.id).select('-password');
-
-            if (!user) {
-                return res.status(401).json({ message: 'User not found' });
-            }
-
-            // Attach user to request
-            (req as any).user = user;
+            // Extract user data from JWT payload (stateless authentication)
+            // No DB lookup needed - role is encoded in the token
+            (req as any).user = {
+                _id: decoded.id,
+                role: decoded.role || 'user'
+            };
 
             next();
         } catch (error) {

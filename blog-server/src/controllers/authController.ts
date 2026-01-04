@@ -5,11 +5,11 @@ import * as bcrypt from 'bcryptjs';
 import { OAuth2Client } from 'google-auth-library';
 import { body, validationResult } from 'express-validator';
 
-const generateToken = (id: string) => {
+const generateToken = (id: string, role: string = 'user') => {
     if (!process.env.JWT_SECRET) {
         throw new Error('JWT_SECRET is not defined');
     }
-    return jwt.sign({ id }, process.env.JWT_SECRET, {
+    return jwt.sign({ id, role }, process.env.JWT_SECRET, {
         expiresIn: '30d',
     });
 };
@@ -47,7 +47,7 @@ export const registerUser = async (req: Request, res: Response) => {
                 name: user.name,
                 email: user.email,
                 role: user.role,
-                token: generateToken((user._id as any).toString()),
+                token: generateToken((user._id as any).toString(), user.role),
             });
         } else {
             res.status(400).json({ message: 'Invalid user data' });
@@ -69,7 +69,7 @@ export const loginUser = async (req: Request, res: Response) => {
                 name: user.name,
                 email: user.email,
                 role: user.role,
-                token: generateToken((user._id as any).toString()),
+                token: generateToken((user._id as any).toString(), user.role),
             });
         } else {
             res.status(401).json({ message: 'Invalid email or password' });
@@ -96,7 +96,12 @@ export const googleAuth = async (req: Request, res: Response) => {
 
         if (!payload) return res.status(400).json({ message: 'Invalid token' });
 
-        const { email, name, sub: googleId } = payload;
+        const { email, name, sub: googleId, email_verified } = payload;
+
+        // Security: Verify email is confirmed by Google
+        if (!email_verified) {
+            return res.status(403).json({ message: 'Google email not verified' });
+        }
 
         let user = await User.findOne({ email });
 
@@ -121,7 +126,7 @@ export const googleAuth = async (req: Request, res: Response) => {
             name: user.name,
             email: user.email,
             role: user.role,
-            token: generateToken((user._id as any).toString()),
+            token: generateToken((user._id as any).toString(), user.role),
         });
     } catch (error) {
         res.status(400).json({ message: 'Google Auth Failed' });

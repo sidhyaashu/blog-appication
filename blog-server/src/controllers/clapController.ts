@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import type { Request, Response } from 'express';
 import Clap from '../models/Clap.js';
 import Post from '../models/Post.js';
@@ -18,24 +19,27 @@ export const clapPost = async (req: Request, res: Response) => {
         // Validate count
         const clapCount = Math.min(Math.max(parseInt(count), 1), 50);
 
-        // Find existing clap or create new
-        let clap = await Clap.findOne({ user_id: userId, post_id: postId });
+        // Use atomic update to prevent race conditions
+        const result = await Clap.findOneAndUpdate(
+            { user_id: userId, post_id: postId },
+            {
+                $inc: { count: clapCount },
+                $set: { updated_at: new Date() }
+            },
+            {
+                upsert: true,
+                new: true,
+                setDefaultsOnInsert: true
+            }
+        );
 
-        if (clap) {
-            // Update existing clap (max 50 total)
-            clap.count = Math.min(clap.count + clapCount, 50);
-            clap.updated_at = new Date();
-            await clap.save();
-        } else {
-            // Create new clap
-            clap = await Clap.create({
-                user_id: userId,
-                post_id: postId,
-                count: clapCount
-            });
+        // Ensure max 50 claps per user
+        if (result.count > 50) {
+            result.count = 50;
+            await result.save();
         }
 
-        // Get total clap count for the post
+        // Update denormalized total_claps on Post atomically
         const totalClaps = await Clap.aggregate([
             { $match: { post_id: new mongoose.Types.ObjectId(postId) } },
             { $group: { _id: null, total: { $sum: '$count' } } }
@@ -43,8 +47,11 @@ export const clapPost = async (req: Request, res: Response) => {
 
         const total = totalClaps[0]?.total || 0;
 
+        // Update the post's denormalized clap count
+        await Post.findByIdAndUpdate(postId, { total_claps: total });
+
         res.status(200).json({
-            userClaps: clap.count,
+            userClaps: result.count,
             totalClaps: total
         });
     } catch (error: any) {
@@ -59,11 +66,9 @@ export const getClapStats = async (req: Request, res: Response) => {
         const user = (req as any).user;
         const userId = user?._id || user?.id;
 
-        // Get total claps
-        const totalClaps = await Clap.aggregate([
-            { $match: { post_id: new mongoose.Types.ObjectId(postId) } },
-            { $group: { _id: null, total: { $sum: '$count' } } }
-        ]);
+        // Read denormalized count from Post for performance
+        const post = await Post.findById(postId).select('total_claps');
+        const totalClaps = post?.total_claps || 0;
 
         // Get user's claps if authenticated
         let userClaps = 0;
@@ -73,7 +78,7 @@ export const getClapStats = async (req: Request, res: Response) => {
         }
 
         res.status(200).json({
-            totalClaps: totalClaps[0]?.total || 0,
+            totalClaps,
             userClaps
         });
     } catch (error: any) {
@@ -81,5 +86,3 @@ export const getClapStats = async (req: Request, res: Response) => {
         res.status(500).json({ message: 'Server error' });
     }
 };
-
-import mongoose from 'mongoose';

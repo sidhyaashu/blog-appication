@@ -65,13 +65,9 @@ export default function EditPostPage({ params }: { params: { id: string } }) {
                 // I will add GET /:id to backend to be safe.
 
                 const token = localStorage.getItem('token');
-                const postRes = await fetch(`${API_URL}/posts`, { // Fetching all and filtering is inefficient but works as fallback
-                    headers: { 'Authorization': `Bearer ${token}` } // Admin route might need auth
-                });
 
-                // BETTER: Just implement GET /posts/:id in backend.
-                // I will write this frontend code to call `${API_URL}/posts/${postId}` (GET).
-                const res = await fetch(`${API_URL}/posts/${postId}`, {
+                // Fixed: Use /posts/id/:id to match backend route definition
+                const res = await fetch(`${API_URL}/posts/id/${postId}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
 

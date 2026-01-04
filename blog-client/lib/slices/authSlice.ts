@@ -9,25 +9,11 @@ interface AuthState {
     error: string | null;
 }
 
-// Helper to get initial state from localStorage if available
-const getUserFromStorage = (): User | null => {
-    if (typeof window !== 'undefined') {
-        const user = localStorage.getItem('user');
-        return user ? JSON.parse(user) : null;
-    }
-    return null;
-};
-
-const getTokenFromStorage = (): string | null => {
-    if (typeof window !== 'undefined') {
-        return localStorage.getItem('token');
-    }
-    return null;
-};
-
+// Initial state is null to prevent SSR/client mismatch
+// State will be rehydrated from localStorage on client mount
 const initialState: AuthState = {
-    user: getUserFromStorage(),
-    token: getTokenFromStorage(),
+    user: null,
+    token: null,
     status: 'idle',
     error: null,
 };
@@ -89,6 +75,11 @@ const authSlice = createSlice({
     reducers: {
         clearError(state) {
             state.error = null;
+        },
+        setCredentials(state, action: PayloadAction<{ user: User; token: string }>) {
+            state.user = action.payload.user;
+            state.token = action.payload.token;
+            state.status = 'succeeded';
         }
     },
     extraReducers: (builder) => {
@@ -177,5 +168,5 @@ const authSlice = createSlice({
     },
 });
 
-export const { clearError } = authSlice.actions;
+export const { clearError, setCredentials } = authSlice.actions;
 export default authSlice.reducer;

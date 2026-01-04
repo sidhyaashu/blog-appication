@@ -13,11 +13,8 @@ export const getPosts = async (req: Request, res: Response) => {
         // Build search query
         const query: any = { status: 'published' };
         if (search) {
-            query.$or = [
-                { title: { $regex: search, $options: 'i' } },
-                { excerpt: { $regex: search, $options: 'i' } },
-                { content: { $regex: search, $options: 'i' } }
-            ];
+            // Use MongoDB text search for performance (requires text index)
+            query.$text = { $search: search };
         }
 
         const posts = await Post.find(query)
