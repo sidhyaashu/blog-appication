@@ -106,6 +106,21 @@ export default function EditPostPage({ params }: { params: { id: string } }) {
             return;
         }
 
+        // Validate image URL domain (must match Next.js config whitelist)
+        const allowedDomains = ['images.pexels.com', 'images.unsplash.com'];
+        try {
+            const url = new URL(imageUrl);
+            if (!allowedDomains.includes(url.hostname)) {
+                toast.error('Only Pexels and Unsplash images are currently supported');
+                setLoading(false);
+                return;
+            }
+        } catch (error) {
+            toast.error('Invalid image URL');
+            setLoading(false);
+            return;
+        }
+
         try {
             const res = await fetch(`${API_URL}/posts/${postId}`, {
                 method: 'PUT',

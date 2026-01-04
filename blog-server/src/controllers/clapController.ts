@@ -39,20 +39,18 @@ export const clapPost = async (req: Request, res: Response) => {
             await result.save();
         }
 
-        // Update denormalized total_claps on Post atomically
-        const totalClaps = await Clap.aggregate([
-            { $match: { post_id: new mongoose.Types.ObjectId(postId) } },
-            { $group: { _id: null, total: { $sum: '$count' } } }
-        ]);
+        // Update denormalized total_claps on Post atomically (no aggregation needed)
+        await Post.findByIdAndUpdate(postId, {
+            $inc: { total_claps: clapCount }
+        });
 
-        const total = totalClaps[0]?.total || 0;
-
-        // Update the post's denormalized clap count
-        await Post.findByIdAndUpdate(postId, { total_claps: total });
+        // Get updated totals from denormalized field
+        const post = await Post.findById(postId).select('total_claps');
+        const totalClaps = post?.total_claps || 0;
 
         res.status(200).json({
             userClaps: result.count,
-            totalClaps: total
+            totalClaps
         });
     } catch (error: any) {
         logger.error('Clap post error:', error);

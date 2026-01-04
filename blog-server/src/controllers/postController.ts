@@ -2,16 +2,24 @@ import type { Request, Response } from 'express';
 import Post from '../models/Post.js';
 import Category from '../models/Category.js';
 import Comment from '../models/Comment.js';
+import sanitizeHtml from 'sanitize-html';
 
 export const getPosts = async (req: Request, res: Response) => {
     try {
         const page = parseInt(req.query.page as string) || 1;
         const limit = parseInt(req.query.limit as string) || 10;
         const search = req.query.search as string || '';
+        const category = req.query.category as string;
         const skip = (page - 1) * limit;
 
         // Build search query
         const query: any = { status: 'published' };
+
+        // Add category filter if provided
+        if (category) {
+            query.category_id = category;
+        }
+
         if (search) {
             // Use MongoDB text search for performance (requires text index)
             query.$text = { $search: search };
@@ -92,6 +100,17 @@ export const createPost = async (req: Request, res: Response) => {
             return res.status(401).json({ message: 'Not authorized' });
         }
 
+        // Sanitize HTML content to prevent XSS attacks
+        if (req.body.content) {
+            req.body.content = sanitizeHtml(req.body.content, {
+                allowedTags: sanitizeHtml.defaults.allowedTags.concat(['img', 'h1', 'h2']),
+                allowedAttributes: {
+                    ...sanitizeHtml.defaults.allowedAttributes,
+                    img: ['src', 'alt', 'title', 'width', 'height']
+                }
+            });
+        }
+
         const newPost = new Post({
             ...req.body,
             author_id: user._id
@@ -138,8 +157,17 @@ export const updatePost = async (req: Request, res: Response) => {
             return res.status(401).json({ message: 'Not authorized to update this post' });
         }
 
+        // Sanitize HTML content to prevent XSS attacks
+        const sanitizedContent = content ? sanitizeHtml(content, {
+            allowedTags: sanitizeHtml.defaults.allowedTags.concat(['img', 'h1', 'h2']),
+            allowedAttributes: {
+                ...sanitizeHtml.defaults.allowedAttributes,
+                img: ['src', 'alt', 'title', 'width', 'height']
+            }
+        }) : post.content;
+
         post.title = title || post.title;
-        post.content = content || post.content;
+        post.content = sanitizedContent;
         post.slug = slug || post.slug;
         post.category_id = category_id || post.category_id;
         post.featured = featured !== undefined ? featured : post.featured;

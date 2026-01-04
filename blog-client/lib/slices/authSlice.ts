@@ -90,20 +90,15 @@ const authSlice = createSlice({
         });
         builder.addCase(login.fulfilled, (state, action: PayloadAction<AuthResponse>) => {
             state.status = 'succeeded';
-            // Map AuthResponse to User type if they differ, or assert if compatible.
-            // Assuming AuthResponse has user fields.
-            // Adjust based on actual API response structure. 
-            // Looking at `post.ts`, AuthResponse has _id, name, email, role, token.
             state.user = {
                 _id: action.payload._id,
                 name: action.payload.name,
                 email: action.payload.email,
                 role: action.payload.role,
-                token: action.payload.token // User type in post.ts includes token
+                token: action.payload.token
             };
             state.token = action.payload.token;
-            localStorage.setItem('user', JSON.stringify(state.user));
-            localStorage.setItem('token', state.token);
+            // localStorage sync is handled by AuthRehydration component
         });
         builder.addCase(login.rejected, (state, action) => {
             state.status = 'failed';
@@ -125,8 +120,7 @@ const authSlice = createSlice({
                 token: action.payload.token
             };
             state.token = action.payload.token;
-            localStorage.setItem('user', JSON.stringify(state.user));
-            localStorage.setItem('token', state.token);
+            // localStorage sync is handled by AuthRehydration component
         });
         builder.addCase(signup.rejected, (state, action) => {
             state.status = 'failed';
@@ -148,8 +142,7 @@ const authSlice = createSlice({
                 token: action.payload.token
             };
             state.token = action.payload.token;
-            localStorage.setItem('user', JSON.stringify(state.user));
-            localStorage.setItem('token', state.token);
+            // localStorage sync is handled by AuthRehydration component
         });
         builder.addCase(googleLogin.rejected, (state, action) => {
             state.status = 'failed';
@@ -162,8 +155,7 @@ const authSlice = createSlice({
             state.token = null;
             state.status = 'idle';
             state.error = null;
-            localStorage.removeItem('user');
-            localStorage.removeItem('token');
+            // localStorage cleanup happens in component/middleware
         });
     },
 });

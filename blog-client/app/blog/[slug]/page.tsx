@@ -14,6 +14,7 @@ import { ReadingProgress } from '@/components/reading-progress';
 import { CommentsSection } from '@/components/comments-section';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import DOMPurify from 'isomorphic-dompurify';
 
 interface Post {
   _id: string;
@@ -203,15 +204,11 @@ export default function BlogPostPage() {
             </div>
           )}
 
-          {/* Content */}
-          <div className="prose prose-lg prose-gray max-w-none mb-16 prose-headings:font-bold prose-a:text-blue-600 prose-img:rounded-lg prose-code:bg-gray-100 prose-code:px-1 prose-code:py-0.5 prose-code:rounded">
-            {post.content.split('\n').map((paragraph, idx) => {
-              if (paragraph.trim()) {
-                return <p key={idx} className="mb-4 leading-relaxed">{paragraph}</p>;
-              }
-              return null;
-            })}
-          </div>
+          {/* Content - Render HTML safely with DOMPurify */}
+          <div
+            className="prose prose-lg prose-gray max-w-none mb-16 prose-headings:font-bold prose-a:text-blue-600 prose-img:rounded-lg prose-code:bg-gray-100 prose-code:px-1 prose-code:py-0.5 prose-code:rounded"
+            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(post.content) }}
+          />
 
           {/* Divider */}
           <div className="border-t border-gray-200 my-12" />
